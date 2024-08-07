@@ -1,0 +1,52 @@
+#!/bin/sh
+
+set -eu
+
+bail() {
+  echo >&2 "$@"
+  exit 1
+}
+
+if [ $# -lt 3 ] || [ $# -gt 4 ]; then
+  bail "usage: $0 name user host [port]"
+fi
+
+[ -z "${SSH_KEY:-}" ] &&
+  bail 'ssh private key not set ($SSH_KEY)'
+
+name=$1
+user=$2
+host=$3
+port=${4:-22}
+
+[ -d ~/.ssh ] || {
+  mkdir -p ~/.ssh
+  chmod 700 ~/.ssh
+}
+
+[ -f ~/.ssh/key ] || {
+  echo "$SSH_KEY" >~/.ssh/key
+  chmod 400 ~/.ssh/key
+}
+
+[ -f ~/.ssh/config ] || {
+  echo >~/.ssh/config '
+ControlMaster   auto
+ControlPath     ~/.ssh/%r@%h:%p
+ControlPersist  yes
+
+Host *
+  IdentityFile           ~/.ssh/key
+  StrictHostKeyChecking  accept-new
+'
+}
+
+grep -q -x "Host $name" ~/.ssh/config &&
+  bail "host $name already registered"
+
+echo "
+Host $name
+  User     $user
+  HostName $host
+  Port     $port
+" >>~/.ssh/config
