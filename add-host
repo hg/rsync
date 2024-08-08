@@ -20,7 +20,7 @@ host=$3
 port=${4:-22}
 
 [ -d ~/.ssh ] || {
-  mkdir -p ~/.ssh
+  mkdir -p ~/.ssh/hosts ~/.ssh/mux
   chmod 700 ~/.ssh
 }
 
@@ -32,16 +32,20 @@ port=${4:-22}
 [ -f ~/.ssh/config ] || {
   echo >~/.ssh/config '
 ControlMaster   auto
-ControlPath     ~/.ssh/%r@%h:%p
+ControlPath     ~/.ssh/mux/%r@%h:%p
 ControlPersist  yes
 
 Host *
   IdentityFile           ~/.ssh/key
   StrictHostKeyChecking  accept-new
+
+Include ~/.ssh/hosts/*.conf
 '
 }
 
-grep -q -x "Host $name" ~/.ssh/config &&
+config=~/.ssh/hosts/"$name".conf
+
+[ -e "$config" ] &&
   bail "host $name already registered"
 
 echo "
@@ -49,4 +53,4 @@ Host $name
   User     $user
   HostName $host
   Port     $port
-" >>~/.ssh/config
+" >"$config"
